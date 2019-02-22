@@ -3,7 +3,7 @@
  
  ![Imgur Image](https://i.imgur.com/miQAjfI.png)
  
-This Max for Live device is made by xnamahx.
+ 
 
 Device by Timo Rozendal.
 
