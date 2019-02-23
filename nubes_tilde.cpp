@@ -20,6 +20,7 @@ inline short TO_SHORTFRAME(float v) { return (short(v * 16384.0f)); }
 inline float FROM_SHORTFRAME(short v) { return (float(v) / 16384.0f); }
 
 
+
 struct t_nubes {
 	t_object  x_obj;
 
@@ -41,6 +42,8 @@ struct t_nubes {
 	double f_silence;
 	double f_bypass;
 	double f_lofi;
+	double f_num_channels;
+	float 	f_sample_rate;
 
 	//inlet<>  x_in_left{ this, "(signal) Sample index" };
 	/*t_inlet*  x_in_right{ this, "(signal) Sample index" };
@@ -81,18 +84,7 @@ void nubes_perform64(t_nubes* self, t_object* dsp64, double** ins, long numins, 
 	std::string s = std::to_string(n);
 	object_post(&self->x_obj, s.c_str());*/
 
-	clouds::PlaybackMode mode = (clouds::PlaybackMode) (int(self->f_mode) % clouds::PLAYBACK_MODE_LAST);
-	if (mode != self->processor.playback_mode()) {
-		self->processor.set_playback_mode(mode);
-		switch (mode) {
-		case clouds::PLAYBACK_MODE_GRANULAR: object_post(&self->x_obj,"clds:granular"); self->processor.set_num_channels(2); break;
-		case clouds::PLAYBACK_MODE_STRETCH: object_post(&self->x_obj,"clds:stretch"); self->processor.set_num_channels(2); break;
-		case clouds::PLAYBACK_MODE_LOOPING_DELAY: object_post(&self->x_obj,"clds:looping"); self->processor.set_num_channels(2); break;
-		case clouds::PLAYBACK_MODE_SPECTRAL: object_post(&self->x_obj,"clds:spectral"); self->processor.set_num_channels(1); break;
-		case clouds::PLAYBACK_MODE_LAST:
-		default: object_post(&self->x_obj,"clds : unknown mode");
-		}
-	}
+
 
 	/*object_post(&self->x_obj, "perform2");
 	s = std::to_string(mode);
@@ -100,19 +92,9 @@ void nubes_perform64(t_nubes* self, t_object* dsp64, double** ins, long numins, 
 
 
 	///
-	self->processor.mutable_parameters()->position = constrain(self->f_position, 0.0f, 1.0f);
-	self->processor.mutable_parameters()->size = constrain(self->f_size, 0.0f, 1.0f);
-	self->processor.mutable_parameters()->texture = constrain(self->f_texture, 0.0f, 1.0f);
-	self->processor.mutable_parameters()->dry_wet = constrain(self->f_mix, 0.0f, 1.0f);
-	self->processor.mutable_parameters()->stereo_spread = constrain(self->f_spread, 0.0f, 1.0f);
-	self->processor.mutable_parameters()->feedback = constrain(self->f_feedback, 0.0f, 1.0f);
-	self->processor.mutable_parameters()->reverb = constrain(self->f_reverb, 0.0f, 1.0f);
 
-	self->processor.mutable_parameters()->pitch = constrain(self->f_pitch * 64.0f, -64.0f, 64.0f);
 
-	double density = constrain(self->f_density, 0.0f, 1.0f);
-	density = (mode == clouds::PLAYBACK_MODE_GRANULAR) ? (density*0.6f) + 0.2f : density;
-	self->processor.mutable_parameters()->density = constrain(density, 0.0f, 1.0f);
+
 
 	self->processor.mutable_parameters()->freeze = (self->f_freeze > 0.5f);
 
@@ -130,8 +112,6 @@ void nubes_perform64(t_nubes* self, t_object* dsp64, double** ins, long numins, 
 	self->processor.mutable_parameters()->trigger = trig;
 
 	//self->processor.set_bypass(false);
-	self->processor.set_bypass(self->f_bypass > 0.5f);
-	self->processor.set_silence(self->f_silence > 0.5f);
 	//self->processor.set_silence(false);
 
 	if (sampleframes > self->iobufsz) {
@@ -232,10 +212,10 @@ void* nubes_new(void) {
 
 
 void nubes_free(t_nubes* self) {
-	/*delete [] self->ibuf;
+	delete [] self->ibuf;
 	delete [] self->obuf;
 	delete [] self->small_buf;
-	delete [] self->large_buf;*/
+	delete [] self->large_buf;
 
 	dsp_free((t_pxobject*)self);
 }
@@ -282,49 +262,72 @@ void nubes_trig(t_nubes *x, double f)
 }
 void nubes_position(t_nubes *x, double f)
 {
-  x->f_position = f;
+	x->f_position = f;
+	x->processor.mutable_parameters()->position = constrain(x->f_position, 0.0f, 1.0f);
 }
 void nubes_size(t_nubes *x, double f)
 {
-  x->f_size = f;
+	x->f_size = f;
+	x->processor.mutable_parameters()->size = constrain(x->f_size, 0.0f, 1.0f);
 }
 void nubes_pitch(t_nubes *x, double f)
 {
-  x->f_pitch = f;
+  	x->f_pitch = f;
+	x->processor.mutable_parameters()->pitch = constrain(x->f_pitch * 64.0f, -64.0f, 64.0f);
 }
 void nubes_density(t_nubes *x, double f)
 {
-  x->f_density = f;
+  	x->f_density = f;
+	double density = constrain(x->f_density, 0.0f, 1.0f);
+	density = (x->f_mode == clouds::PLAYBACK_MODE_GRANULAR) ? (density*0.6f) + 0.2f : density;
+	x->processor.mutable_parameters()->density = constrain(density, 0.0f, 1.0f);
 }
 
 void nubes_texture(t_nubes *x, double f)
 {
-  x->f_texture = f;
+	x->f_texture = f;
+	x->processor.mutable_parameters()->texture = constrain(x->f_texture, 0.0f, 1.0f);
 }
 
 void nubes_mix(t_nubes *x, double f)
 {
 	x->f_mix = f;
+	x->processor.mutable_parameters()->dry_wet = constrain(x->f_mix, 0.0f, 1.0f);
 }
 
 void nubes_spread(t_nubes *x, double f)
 {
-  x->f_spread = f;
+  	x->f_spread = f;
+	x->processor.mutable_parameters()->stereo_spread = constrain(x->f_spread, 0.0f, 1.0f);
 }
 
 void nubes_feedback(t_nubes *x, double f)
 {
-  x->f_feedback = f;
+  	x->f_feedback = f;
+	x->processor.mutable_parameters()->feedback = constrain(x->f_feedback, 0.0f, 1.0f);
 }
 
 void nubes_reverb(t_nubes *x, double f)
 {
-  x->f_reverb = f;
+  	x->f_reverb = f;
+	x->processor.mutable_parameters()->reverb = constrain(x->f_reverb, 0.0f, 1.0f);
 }
 
 void nubes_mode(t_nubes *x, double f)
 {
-  x->f_mode = f;
+  	x->f_mode = f;
+	clouds::PlaybackMode mode = (clouds::PlaybackMode) (int(x->f_mode) % clouds::PLAYBACK_MODE_LAST);
+	if (mode != x->processor.playback_mode()) {
+		x->processor.set_playback_mode(mode);
+		switch (mode) {
+		case clouds::PLAYBACK_MODE_GRANULAR: object_post(&x->x_obj,"clds:granular"); x->processor.set_num_channels(2); break;
+		case clouds::PLAYBACK_MODE_STRETCH: object_post(&x->x_obj,"clds:stretch"); x->processor.set_num_channels(2); break;
+		case clouds::PLAYBACK_MODE_LOOPING_DELAY: object_post(&x->x_obj,"clds:looping"); x->processor.set_num_channels(2); break;
+		case clouds::PLAYBACK_MODE_SPECTRAL: object_post(&x->x_obj,"clds:spectral"); x->processor.set_num_channels(1); break;
+		case clouds::PLAYBACK_MODE_LAST:
+		default: object_post(&x->x_obj,"clds : unknown mode");
+		}
+	}
 }
 
 void nubes_mono(t_nubes *x, double f)
@@ -334,19 +337,37 @@ void nubes_mono(t_nubes *x, double f)
 
 void nubes_silence(t_nubes *x, double f)
 {
-  x->f_silence = f;
+  	x->f_silence = f;
+	x->processor.set_silence(x->f_silence > 0.5f);
 }
 
 void nubes_bypass(t_nubes *x, double f)
 {
-  x->f_bypass = f;
+  	x->f_bypass = f;
+	x->processor.set_bypass(x->f_bypass > 0.5f);
 }
 
 void nubes_lofi(t_nubes *x, double f)
 {
-  x->f_lofi = f;
+  	x->f_lofi = f;
+	x->processor.set_low_fidelity(x->f_lofi > 0.5f);
 }
 
+
+void nubes_numchannels(t_nubes *x, double f)
+{
+  	x->f_num_channels = f;
+	x->processor.set_num_channels(x->f_num_channels);
+}
+
+void nubes_samplerate(t_nubes *x, double f)
+{
+  	x->f_sample_rate = f;
+	x->processor.sample_rate(x->f_sample_rate);
+	/*object_post(&x->x_obj, "nubes_samplerate");
+	std::string s = std::to_string(f);
+	object_post(&x->x_obj, s.c_str());*/
+}
 
 void ext_main(void* r) {
 	this_class = class_new("nubes~", (method)nubes_new, (method)nubes_free, sizeof(t_nubes), NULL, A_GIMME, 0);
@@ -370,6 +391,8 @@ void ext_main(void* r) {
 	class_addmethod(this_class,(method) nubes_silence, "silence", A_DEFFLOAT, 0);
 	class_addmethod(this_class,(method) nubes_bypass, "bypass", A_DEFFLOAT, 0);
 	class_addmethod(this_class,(method) nubes_lofi, "lofi", A_DEFFLOAT, 0);
+	class_addmethod(this_class,(method) nubes_samplerate, "samplerate", A_DEFFLOAT, 0);
+	class_addmethod(this_class,(method) nubes_numchannels, "numchannels", A_DEFFLOAT, 0);
 
 	class_dspinit(this_class);
 	class_register(CLASS_BOX, this_class);
