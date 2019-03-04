@@ -43,6 +43,7 @@ struct Parameters {
   float stereo_spread;
   float feedback;
   float reverb;
+  float sample_rate;
   
   bool freeze;
   bool trigger;

@@ -145,6 +145,11 @@ class GranularProcessor {
     if (low_fidelity_) quality |= 2;
     return quality;
   }
+
+  inline void sample_rate(float sr) {
+    reset_buffers_ = sample_rate_ != sr;
+    sample_rate_ = sr;
+  }
   
   void GetPersistentData(PersistentBlock* block, size_t *num_blocks);
   bool LoadPersistentData(const uint32_t* data);
@@ -153,11 +158,6 @@ class GranularProcessor {
  private:
   inline int32_t resolution() const {
     return low_fidelity_ ? 8 : 16;
-  }
-
-  inline void sample_rate(float sr) {
-    reset_buffers_ = sample_rate_ != sr;
-    sample_rate_ = sr;
   }
 
   inline float sample_rate() const {
