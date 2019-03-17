@@ -1,6 +1,6 @@
 #include "c74_msp.h"
-#include <iostream>
 #include "clouds/dsp/granular_processor.h"
+#include <iostream>
 
 using namespace c74::max;
 
@@ -8,18 +8,25 @@ static const char* clds_version = "0.5";
 
 static t_class* this_class = nullptr;
 
-/*inline void post(const char* msg) {
-	std::cout << msg << std::endl;
-}*/
-
 inline double constrain(double v, double vMin, double vMax) {
 	return std::max<double>(vMin, std::min<double>(vMax, v));
 }
 
+inline int min(int a, int b) {
+	return (a < b) ? a : b;
+}
+
+/** Returns the maximum of `a` and `b` */
+inline int max(int a, int b) {
+	return (a > b) ? a : b;
+}
+
+inline int clamp(int x, int a, int b) {
+	return min(max(x, a), b);
+}
+
 inline short TO_SHORTFRAME(float v) { return (short(v * 16384.0f)); }
 inline float FROM_SHORTFRAME(short v) { return (float(v) / 16384.0f); }
-
-
 
 struct t_nubes {
 	t_object  x_obj;
@@ -60,8 +67,10 @@ struct t_nubes {
 	clouds::ShortFrame* obuf;
 	int iobufsz;
 
-	static const int LARGE_BUF = 524288;
-	static const int SMALL_BUF = 262144;
+/*	static const int LARGE_BUF = 524288;
+	static const int SMALL_BUF = 262144;*/
+	static const int LARGE_BUF = 118784;
+	static const int SMALL_BUF = 65536 - 128;
 	uint8_t* large_buf;
 	int      large_buf_size;
 	uint8_t* small_buf;
@@ -71,92 +80,40 @@ struct t_nubes {
 
 
 void nubes_perform64(t_nubes* self, t_object* dsp64, double** ins, long numins, double** outs, long numouts, long sampleframes, long flags, void* userparam) {
+    if (numouts>0 && numins>0)
+    {
+	    double    *in = ins[0];     // first inlet
+	    double    *in2 = ins[1];     // first inlet
+	    double    *out = outs[0];   // first outlet
+	    double    *out2 = outs[1];   // first outlet
 
-    double    *in = ins[0];     // first inlet
-    double    *in2 = ins[1];     // first inlet
-    double    *out = outs[0];   // first outlet
-    double    *out2 = outs[1];   // first outlet
-    int       n = sampleframes; // vector size
+		/*if (sampleframes > self->iobufsz) {
+			delete[] self->ibuf;
+			delete[] self->obuf;
+			self->iobufsz = sampleframes;
+			self->ibuf = new clouds::ShortFrame[self->iobufsz];
+			self->obuf = new clouds::ShortFrame[self->iobufsz];
+		}*/
 
-	self->processor.set_low_fidelity(false);
+		for (auto i=0; i<self->iobufsz; ++i){
+			self->ibuf[i].l = clamp((*in++) * 32767.0f, -32768.0f, 32767.0f);
+			self->ibuf[i].r = clamp((*in2++) * 32767.0f, -32768.0f, 32767.0f);
+		}
 
-	/*object_post(&self->x_obj, "perform");
-	std::string s = std::to_string(n);
-	object_post(&self->x_obj, s.c_str());*/
+		self->processor.Prepare();
+		self->processor.Process(self->ibuf, self->obuf, self->iobufsz);
 
+		for (int i = 0; i < self->iobufsz; i++) {
+			*out++ = self->obuf[i].l / 32768.0;
+	        *out2++ = self->obuf[i].r / 32768.0;
+		}
 
-
-	/*object_post(&self->x_obj, "perform2");
-	s = std::to_string(mode);
-	object_post(&self->x_obj, s.c_str());*/
-
-
-	///
-
-
-
-
-	self->processor.mutable_parameters()->freeze = (self->f_freeze > 0.5f);
-
-	//note the trig input is really a gate... which then feeds the trig
-	self->processor.mutable_parameters()->gate = (self->f_trig > 0.5f);
-
-	bool trig = false;
-	if ((self->f_trig > 0.5f) && !self->ltrig) {
-		self->ltrig = true;
-		trig = true;
 	}
-	else if (!(self->f_trig > 0.5f)) {
-		self->ltrig = false;
-	}
-	self->processor.mutable_parameters()->trigger = trig;
-
-	//self->processor.set_bypass(false);
-	//self->processor.set_silence(false);
-
-	if (sampleframes > self->iobufsz) {
-		delete[] self->ibuf;
-		delete[] self->obuf;
-		self->iobufsz = sampleframes;
-		self->ibuf = new clouds::ShortFrame[self->iobufsz];
-		self->obuf = new clouds::ShortFrame[self->iobufsz];
-	}
-
-    /*while (n--) {               // perform calculation on all samples
-		self->ibuf[n].l = TO_SHORTFRAME(*in++);
-		self->ibuf[n].r = TO_SHORTFRAME(*in2++);
-    }*/
-
-	for (auto i=0; i<sampleframes; ++i){
-		self->ibuf[i].l = TO_SHORTFRAME(*in++);
-		self->ibuf[i].r = TO_SHORTFRAME(*in2++);
-		//outs[0][i] = std::sin(ins[0][i] * 2.0 * M_PI);
-		//self->ibuf[i].l = TO_SHORTFRAME(ins[0][i]);
-		//self->ibuf[i].r = TO_SHORTFRAME(ins[0][i]);
-	}
-
-	self->processor.Prepare();
-	self->processor.Process(self->ibuf, self->obuf, sampleframes);
-
-	n = sampleframes;
-    /*while (n--) {               // perform calculation on all samples
-        *out++ = FROM_SHORTFRAME(self->obuf[n].l);
-        *out2++ = FROM_SHORTFRAME(self->obuf[n].r);
-    }*/
-
-	for (int i = 0; i < sampleframes; i++) {
-		*out++ = FROM_SHORTFRAME(self->obuf[i].l);
-        *out2++ = FROM_SHORTFRAME(self->obuf[i].r);
-		//outs[0][i] = FROM_SHORTFRAME(self->obuf[i].l);
-		//outs[1][i] = FROM_SHORTFRAME(self->obuf[i].r);
-	}
-
 }
 
 void* nubes_new(void) {
 	t_nubes* self = (t_nubes*)object_alloc(this_class);
 
-	self->ltrig = false;
 
 	self->iobufsz = 64;
 	self->ibuf = new clouds::ShortFrame[self->iobufsz];
@@ -165,16 +122,7 @@ void* nubes_new(void) {
 	self->large_buf = new uint8_t[self->large_buf_size];
 	self->small_buf_size = t_nubes::SMALL_BUF;
 	self->small_buf = new uint8_t[self->small_buf_size];
-
-	/*self->x_in_right   = inlet_new(self, "signal");
-	self->x_out_left   = outlet_new(self, "signal");
-	self->x_out_right  = outlet_new(self, "signal");*/
-
-	outlet_new(self, "signal");
-	outlet_new(self, "signal");
-	inlet_new(self, NULL);
-	//inlet_new(self, "signal");
-
+/*
 	self->f_freeze = 0.0f;
 	self->f_trig = 0.0f;
 	self->f_position = 0.0f;
@@ -191,36 +139,22 @@ void* nubes_new(void) {
 	self->f_silence = 0.0f;
 	self->f_bypass = 0.0f;
 	self->f_lofi = 0.0f;
+*/
+	self->processor.Init(self->large_buf,self->LARGE_BUF,self->small_buf,self->SMALL_BUF);
 
-	self->processor.Init(
-	self->large_buf,self->large_buf_size, 
-	self->small_buf,self->small_buf_size);
-
-	self->ltrig = false;
-
-	//post("clds~ version:%s, lbufsz:%d sbufsz: %d", clds_version, self->large_buf_size, self->small_buf_size);
+	outlet_new(self, "signal");
+	outlet_new(self, "signal");
+	inlet_new(self, NULL);
 
 	dsp_setup((t_pxobject*)self, 2);
-
-	//inlet_new(self, "signal");
-	//inlet_new(self, "signal");
-	//outlet_new(self, "signal");
-	//outlet_new(self, "signal");
 
 	return (void *)self;
 }
 
 
 void nubes_free(t_nubes* self) {
-	delete [] self->ibuf;
-	delete [] self->obuf;
-	delete [] self->small_buf;
-	delete [] self->large_buf;
-
 	dsp_free((t_pxobject*)self);
 }
-
-
 
 void nubes_dsp64(t_nubes* self, t_object* dsp64, short* count, double samplerate, long maxvectorsize, long flags) {
 	object_method_direct(void, (t_object*, t_object*, t_perfroutine64, long, void*),
@@ -254,11 +188,15 @@ void nubes_assist(t_nubes* self, void* unused, t_assist_function io, long index,
 
 void nubes_freeze(t_nubes *x, double f)
 {
-  x->f_freeze = f;
+  	x->f_freeze = f;
+	x->processor.mutable_parameters()->freeze = (x->f_freeze > 0.5f);
 }
 void nubes_trig(t_nubes *x, double f)
 {
-  x->f_trig = f;
+  	x->f_trig = f;
+	//note the trig input is really a gate... which then feeds the trig
+	x->processor.mutable_parameters()->gate = (x->f_trig > 0.5f);
+	x->processor.mutable_parameters()->trigger = (x->f_trig > 0.5f);
 }
 void nubes_position(t_nubes *x, double f)
 {
@@ -364,9 +302,6 @@ void nubes_samplerate(t_nubes *x, double f)
 {
   	x->f_sample_rate = f;
 	x->processor.sample_rate(x->f_sample_rate);
-	/*object_post(&x->x_obj, "nubes_samplerate");
-	std::string s = std::to_string(f);
-	object_post(&x->x_obj, s.c_str());*/
 }
 
 void ext_main(void* r) {
