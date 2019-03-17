@@ -1,6 +1,6 @@
-// Copyright 2014 Olivier Gillet.
+// Copyright 2017 Olivier Gillet.
 //
-// Author: Olivier Gillet (pichenettes@mutable-instruments.net)
+// Author: Olivier Gillet (ol.gillet@gmail.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,21 +24,48 @@
 //
 // -----------------------------------------------------------------------------
 //
-// Audio processing frames.
+// Gate bits are pre-processed to tag edges. A typical gate sequence is:
+//
+//           ------------
+//           
+// ----------            ----------
+//                                 
+// 00000000003111111111114000000000
+//  ^        ^   ^       ^
+//  |        |   |       |
+//  |        |   |      GATE_FLAG_FALLING
+//  |        |   |
+//  |        |  GATE_FLAG_HIGH
+//  |        |
+//  |       GATE_FLAG_HIGH | GATE_FLAG_RISING
+//  |
+// GATE_FLAG_LOW
 
-#ifndef CLOUDS_DSP_FRAME_H_
-#define CLOUDS_DSP_FRAME_H_
+#ifndef STMLIB_UTILS_GATE_FLAGS_H_
+#define STMLIB_UTILS_GATE_FLAGS_H_
 
 #include "stmlib/stmlib.h"
 
-namespace clouds {
+namespace stmlib {
 
-const int32_t kMaxNumChannels = 2;
-const size_t kMaxBlockSize = 64;
+enum GateFlagsBits {
+  GATE_FLAG_LOW = 0,
+  GATE_FLAG_HIGH = 1,
+  GATE_FLAG_RISING = 2,
+  GATE_FLAG_FALLING = 4,
+};
 
-typedef struct { short l; short r; } ShortFrame;
-typedef struct { float l; float r; } FloatFrame;
+typedef uint8_t GateFlags;
 
-}  // namespace clouds
+inline GateFlags ExtractGateFlags(GateFlags previous, bool current) {
+  previous &= GATE_FLAG_HIGH;
+  if (current) {
+    return previous ? GATE_FLAG_HIGH : (GATE_FLAG_RISING | GATE_FLAG_HIGH);
+  } else {
+    return previous ? GATE_FLAG_FALLING : GATE_FLAG_LOW;
+  }
+}
 
-#endif  // CLOUDS_DSP_FRAME_H_
+}  // namespace stmlib
+
+#endif  // STMLIB_UTILS_GATE_FLAGS_H_

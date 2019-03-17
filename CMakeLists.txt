@@ -12,7 +12,7 @@ include_directories(
 )
 
 set(CLOUDS_SRC
-       mi/clouds/clouds_resources.cc
+       mi/clouds/resources.cc
        mi/clouds/dsp/correlator.cc
        mi/clouds/dsp/mu_law.cc
        mi/clouds/dsp/granular_processor.cc

@@ -1,6 +1,6 @@
 // Copyright 2014 Olivier Gillet.
 //
-// Author: Olivier Gillet (ol.gillet@gmail.com)
+// Author: Olivier Gillet (pichenettes@mutable-instruments.net)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,8 +30,6 @@
 
 #include <cstring>
 
-// #include "clouds/drivers/debug_pin.h"
-
 #include "stmlib/dsp/parameter_interpolator.h"
 #include "stmlib/utils/buffer_allocator.h"
 
@@ -39,7 +37,7 @@
 
 namespace clouds {
 
-#define DEFAULT_SAMPLE_RATE 44100.0f
+#define DEFAULT_SAMPLE_RATE 48000.0f
 
 using namespace std;
 using namespace stmlib;
@@ -272,6 +270,46 @@ void GranularProcessor::Process(
   reverb_.set_time(0.35f + 0.63f * reverb_amount);
   reverb_.set_input_gain(0.2f);
   reverb_.set_lp(0.6f + 0.37f * feedback);
+  
+/*
+  reverb_.set_diffusion(0.3f + 0.5f * parameters_.stereo_spread);
+  reverb_.set_size(0.05f + 0.94f * parameters_.size);
+  reverb_.set_mod_rate(parameters_.feedback);
+  reverb_.set_mod_amount(parameters_.reverb * 300.0f);
+  reverb_.set_ratio(SemitonesToRatio(parameters_.pitch));
+
+  float x = parameters_.pitch;
+  const float limit = 0.7f;
+  const float slew = 0.4f;
+
+  float wet =
+  x < -limit ? 1.0f :
+  x < -limit + slew ? 1.0f - (x + limit) / slew:
+  x < limit - slew ? 0.0f :
+  x < limit ? 1.0f + (x - limit) / slew:
+  1.0f;
+  reverb_.set_pitch_shift_amount(wet);
+
+  if (parameters_.freeze) {
+    reverb_.set_input_gain(0.0f);
+    reverb_.set_decay(1.0f);
+    reverb_.set_lp(1.0f);
+    reverb_.set_hp(0.0f);
+  } else {
+    reverb_.set_decay(parameters_.density * 1.3f
+                     + 0.15f * abs(parameters_.pitch) / 24.0f);
+    reverb_.set_input_gain(0.5f);
+    float lp = parameters_.texture < 0.5f ?
+      parameters_.texture * 2.0f : 1.0f;
+    float hp = parameters_.texture > 0.5f ?
+      (parameters_.texture - 0.5f) * 2.0f : 0.0f;
+    reverb_.set_lp(0.03f + 0.9f * lp);
+    reverb_.set_hp(0.01f + 0.2f * hp); // the small offset
+                                            // gets rid of
+                                            // feedback of large
+                                            // DC offset.
+  }
+*/
   reverb_.Process(out_, size);
   
   const float post_gain = 1.2f;
@@ -414,7 +452,7 @@ void GranularProcessor::Prepare() {
 
     BufferAllocator allocator(workspace, workspace_size);
     diffuser_.Init(allocator.Allocate<float>(2048));
-    reverb_.Init(allocator.Allocate<uint16_t>(16384),sample_rate_);
+    reverb_.Init(allocator.Allocate<uint16_t>(16384));
     
     size_t correlator_block_size = (kMaxWSOLASize / 32) + 2;
     uint32_t* correlator_data = allocator.Allocate<uint32_t>(

@@ -108,26 +108,24 @@ inline float SoftClip(float x) {
   }
 }
 
-
-inline int32_t Clip16(int32_t x) {
-	if (x < -32768) {
-		return -32768;
-	} else if (x > 32767) {
-		return 32767;
-	} else {
-		return x;
-	}
-	}
-	inline uint16_t ClipU16(int32_t x) {
-	if (x < 0) {
-		return 0;
-	} else if (x > 65535) {
-		return 65535;
-	} else {
-		return x;
-	}
-}
-  
+  inline int32_t Clip16(int32_t x) {
+    if (x < -32768) {
+      return -32768;
+    } else if (x > 32767) {
+      return 32767;
+    } else {
+      return x;
+    }
+  }
+  inline uint16_t ClipU16(int32_t x) {
+    if (x < 0) {
+      return 0;
+    } else if (x > 65535) {
+      return 65535;
+    } else {
+      return x;
+    }
+  }
 
   inline float Sqrt(float x) {
     return sqrtf(x);

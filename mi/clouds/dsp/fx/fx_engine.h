@@ -1,6 +1,6 @@
 // Copyright 2014 Olivier Gillet.
 //
-// Author: Olivier Gillet (ol.gillet@gmail.com)
+// Author: Olivier Gillet (pichenettes@mutable-instruments.net)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@
 
 #include "stmlib/dsp/dsp.h"
 #include "stmlib/dsp/cosine_oscillator.h"
+#include "clouds/dsp/random_oscillator.h"
 
 namespace clouds {
 
@@ -223,7 +224,11 @@ class FxEngine {
       state += coefficient * (accumulator_ - state);
       accumulator_ -= state;
     }
-    
+
+    inline void SoftLimit() {
+      accumulator_ = stmlib::SoftLimit(accumulator_);
+    }
+
     template<typename D>
     inline void Interpolate(D& d, float offset, float scale) {
       STATIC_ASSERT(D::base + D::length <= size, delay_memory_full);
@@ -236,7 +241,31 @@ class FxEngine {
       previous_read_ = x;
       accumulator_ += x * scale;
     }
-    
+
+    template<typename D>
+      inline void InterpolateHermite(D& d, float offset, float scale) {
+      STATIC_ASSERT(D::base + D::length <= size, delay_memory_full);
+      MAKE_INTEGRAL_FRACTIONAL(offset);
+      float xm1 = DataType<format>::Decompress(
+        buffer_[(write_ptr_ + offset_integral + D::base - 1) & MASK]);
+      float x0 = DataType<format>::Decompress(
+        buffer_[(write_ptr_ + offset_integral + D::base + 0) & MASK]);
+      float x1 = DataType<format>::Decompress(
+        buffer_[(write_ptr_ + offset_integral + D::base + 1) & MASK]);
+      float x2 = DataType<format>::Decompress(
+        buffer_[(write_ptr_ + offset_integral + D::base + 2) & MASK]);
+
+      float c = (x1 - xm1) * 0.5f;
+      float v = x0 - x1;
+      float w = c + v;
+      float a = w + v + (x2 - x0) * 0.5f;
+      float b_neg = w + a;
+      float t = offset_fractional;
+      float x = (((a * t) - b_neg) * t + c) * t + x0;
+      previous_read_ = x;
+      accumulator_ += x * scale;
+    }
+
     template<typename D>
     inline void Interpolate(
         D& d, float offset, LFOIndex index, float amplitude, float scale) {
@@ -248,6 +277,32 @@ class FxEngine {
       float b = DataType<format>::Decompress(
           buffer_[(write_ptr_ + offset_integral + D::base + 1) & MASK]);
       float x = a + (b - a) * offset_fractional;
+      previous_read_ = x;
+      accumulator_ += x * scale;
+    }
+
+    template<typename D>
+    inline void InterpolateHermite(
+        D& d, float offset, LFOIndex index, float amplitude, float scale) {
+      STATIC_ASSERT(D::base + D::length <= size, delay_memory_full);
+      offset += amplitude * lfo_value_[index];
+      MAKE_INTEGRAL_FRACTIONAL(offset);
+      float xm1 = DataType<format>::Decompress(
+        buffer_[(write_ptr_ + offset_integral + D::base - 1) & MASK]);
+      float x0 = DataType<format>::Decompress(
+        buffer_[(write_ptr_ + offset_integral + D::base + 0) & MASK]);
+      float x1 = DataType<format>::Decompress(
+        buffer_[(write_ptr_ + offset_integral + D::base + 1) & MASK]);
+      float x2 = DataType<format>::Decompress(
+        buffer_[(write_ptr_ + offset_integral + D::base + 2) & MASK]);
+
+      float c = (x1 - xm1) * 0.5f;
+      float v = x0 - x1;
+      float w = c + v;
+      float a = w + v + (x2 - x0) * 0.5f;
+      float b_neg = w + a;
+      float t = offset_fractional;
+      float x = (((a * t) - b_neg) * t + c) * t + x0;
       previous_read_ = x;
       accumulator_ += x * scale;
     }

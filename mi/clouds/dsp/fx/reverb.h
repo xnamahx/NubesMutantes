@@ -1,6 +1,6 @@
 // Copyright 2014 Olivier Gillet.
 //
-// Author: Olivier Gillet (ol.gillet@gmail.com)
+// Author: Olivier Gillet (pichenettes@mutable-instruments.net)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,13 +40,12 @@ class Reverb {
   Reverb() { }
   ~Reverb() { }
   
-  void Init(uint16_t* buffer,float sr) {
+  void Init(uint16_t* buffer) {
     engine_.Init(buffer);
-    engine_.SetLFOFrequency(LFO_1, 0.5f / sr);
-    engine_.SetLFOFrequency(LFO_2, 0.3f / sr);
+    engine_.SetLFOFrequency(LFO_1, 0.5f / 32000.0f);
+    engine_.SetLFOFrequency(LFO_2, 0.3f / 32000.0f);
     lp_ = 0.7f;
     diffusion_ = 0.625f;
-    sample_rate_ = sr;
   }
   
   void Process(FloatFrame* in_out, size_t size) {
@@ -161,7 +160,7 @@ class Reverb {
   }
   
  private:
-  typedef FxEngine<16384, FORMAT_12_BIT> E;
+  typedef FxEngine<16384, FORMAT_16_BIT> E;
   E engine_;
   
   float amount_;
@@ -169,7 +168,6 @@ class Reverb {
   float reverb_time_;
   float diffusion_;
   float lp_;
-  float sample_rate_;
   
   float lp_decay_1_;
   float lp_decay_2_;

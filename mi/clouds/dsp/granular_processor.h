@@ -1,6 +1,6 @@
 // Copyright 2014 Olivier Gillet.
 //
-// Author: Olivier Gillet (ol.gillet@gmail.com)
+// Author: Olivier Gillet (pichenettes@mutable-instruments.net)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,8 +43,6 @@
 #include "clouds/dsp/pvoc/phase_vocoder.h"
 #include "clouds/dsp/sample_rate_converter.h"
 #include "clouds/dsp/wsola_sample_player.h"
-
-//#include "clouds/dsp/granular_processor.cc"
 
 namespace clouds {
 
