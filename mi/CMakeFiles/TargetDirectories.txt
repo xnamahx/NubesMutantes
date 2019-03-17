@@ -1,3 +1,0 @@
-C:/Users/xnamahx/Documents/MI4pd/mi/CMakeFiles/MILib.dir
-C:/Users/xnamahx/Documents/MI4pd/mi/CMakeFiles/ALL_BUILD.dir
-C:/Users/xnamahx/Documents/MI4pd/mi/CMakeFiles/ZERO_CHECK.dir
