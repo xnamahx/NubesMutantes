@@ -40,10 +40,10 @@ class Reverb {
   Reverb() { }
   ~Reverb() { }
   
-  void Init(uint16_t* buffer) {
+  void Init(uint16_t* buffer, float sr) {
     engine_.Init(buffer);
-    engine_.SetLFOFrequency(LFO_1, 0.5f / 32000.0f);
-    engine_.SetLFOFrequency(LFO_2, 0.3f / 32000.0f);
+    engine_.SetLFOFrequency(LFO_1, 0.5f / sr);
+    engine_.SetLFOFrequency(LFO_2, 0.3f / sr);
     lp_ = 0.7f;
     diffusion_ = 0.625f;
   }
